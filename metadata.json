@@ -1,0 +1,6 @@
+{
+  "name": "AYHA",
+  "description": "AYHA — Personal AI Companion. Beautiful dark futuristic personal assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
