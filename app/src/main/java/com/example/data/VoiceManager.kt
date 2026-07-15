@@ -60,22 +60,34 @@ class VoiceManager private constructor(private val context: Context) {
 
     private fun initDeviceTts() {
         _voiceState.value = "thinking"
-        tts = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val result = tts?.setLanguage(Locale.US)
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    Log.e(TAG, "Device TTS English is not supported")
+        try {
+            tts = TextToSpeech(context) { status ->
+                try {
+                    if (status == TextToSpeech.SUCCESS) {
+                        val result = tts?.setLanguage(Locale.US)
+                        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                            Log.e(TAG, "Device TTS English is not supported")
+                            _isTtsReady.value = false
+                        } else {
+                            // Make speech cute, slightly high pitch and elegant
+                            tts?.setPitch(1.25f)
+                            tts?.setSpeechRate(0.95f)
+                            _isTtsReady.value = true
+                            Log.d(TAG, "Device TTS Fallback Initialized successfully!")
+                        }
+                    } else {
+                        Log.e(TAG, "Device TTS Initialization failed")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception during TextToSpeech initialization success callback: ${e.message}", e)
                     _isTtsReady.value = false
-                } else {
-                    // Make speech cute, slightly high pitch and elegant
-                    tts?.setPitch(1.25f)
-                    tts?.setSpeechRate(0.95f)
-                    _isTtsReady.value = true
-                    Log.d(TAG, "Device TTS Fallback Initialized successfully!")
+                } finally {
+                    _voiceState.value = "idle"
                 }
-            } else {
-                Log.e(TAG, "Device TTS Initialization failed")
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to instantiate TextToSpeech: ${e.message}", e)
+            _isTtsReady.value = false
             _voiceState.value = "idle"
         }
     }
@@ -146,11 +158,19 @@ class VoiceManager private constructor(private val context: Context) {
     private fun speakDeviceTts(text: String, scope: CoroutineScope) {
         scope.launch(Dispatchers.Main) {
             _voiceState.value = "speaking"
-            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "ayha_tts")
+            try {
+                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "ayha_tts")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed calling tts.speak", e)
+            }
             // Wait for speaking to complete or simulate completion
             scope.launch(Dispatchers.IO) {
-                while (tts?.isSpeaking == true) {
-                    kotlinx.coroutines.delay(100)
+                try {
+                    while (tts?.isSpeaking == true) {
+                        kotlinx.coroutines.delay(100)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error checking tts.isSpeaking status", e)
                 }
                 kotlinx.coroutines.delay(500)
                 _voiceState.value = "idle"

@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +17,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
 import kotlinx.coroutines.CoroutineScope
@@ -65,17 +67,26 @@ class AyhaVoiceService : Service() {
         }
 
         fun startService(context: Context) {
-            val intent = Intent(context, AyhaVoiceService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                val intent = Intent(context, AyhaVoiceService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed starting AyhaVoiceService foreground service: ${e.message}", e)
+                Toast.makeText(context.applicationContext, "Unable to activate background assistant: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         }
 
         fun stopService(context: Context) {
-            val intent = Intent(context, AyhaVoiceService::class.java)
-            context.stopService(intent)
+            try {
+                val intent = Intent(context, AyhaVoiceService::class.java)
+                context.stopService(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed stopping AyhaVoiceService: ${e.message}", e)
+            }
         }
     }
 
@@ -92,7 +103,22 @@ class AyhaVoiceService : Service() {
         Log.d(TAG, "AyhaVoiceService created")
         _isServiceRunning.value = true
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification("Hands-Free Active: Waiting for 'Hey AYHA'"))
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification("Hands-Free Active: Waiting for 'Hey AYHA'"),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, buildNotification("Hands-Free Active: Waiting for 'Hey AYHA'"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start foreground service: ${e.message}", e)
+            _isServiceRunning.value = false
+            stopSelf()
+            return
+        }
         initSpeechRecognizer()
         startContinuousListening()
     }
@@ -163,13 +189,21 @@ class AyhaVoiceService : Service() {
             }
             try {
                 if (!isListening) {
-                    isListening = true
-                    if (_assistantState.value == "idle" || _assistantState.value == "speaking") {
-                        _assistantState.value = "waiting_wake"
+                    val recognizer = speechRecognizer
+                    val intent = recognizerIntent
+                    if (recognizer != null && intent != null) {
+                        isListening = true
+                        if (_assistantState.value == "idle" || _assistantState.value == "speaking") {
+                            _assistantState.value = "waiting_wake"
+                        }
+                        updateNotification("Hands-Free Active: Waiting for 'Hey AYHA'")
+                        recognizer.startListening(intent)
+                        Log.d(TAG, "Recognizer startListening called successfully")
+                    } else {
+                        Log.w(TAG, "SpeechRecognizer or Intent is null, cannot start listening yet")
+                        isListening = false
+                        restartListeningDelayed(2000)
                     }
-                    updateNotification("Hands-Free Active: Waiting for 'Hey AYHA'")
-                    speechRecognizer?.startListening(recognizerIntent)
-                    Log.d(TAG, "Recognizer startListening called")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error starting speech listening: ${e.message}", e)
@@ -287,8 +321,17 @@ class AyhaVoiceService : Service() {
                     // Auto-start recording query
                     mainHandler.postDelayed({
                         try {
-                            isListening = true
-                            speechRecognizer?.startListening(recognizerIntent)
+                            val recognizer = speechRecognizer
+                            val intent = recognizerIntent
+                            if (recognizer != null && intent != null) {
+                                isListening = true
+                                recognizer.startListening(intent)
+                            } else {
+                                Log.w(TAG, "Cannot start listening for active query: recognizer or intent is null")
+                                isListening = false
+                                _assistantState.value = "waiting_wake"
+                                restartListeningDelayed(1000)
+                            }
                         } catch (e: Exception) {
                             Log.e(TAG, "Failed to start listening for active query", e)
                             isListening = false

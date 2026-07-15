@@ -1,6 +1,12 @@
 package com.example.ui.screens
 
 import android.widget.Toast
+import android.util.Log
+import android.os.Build
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -29,6 +35,8 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -124,7 +132,7 @@ fun AyhaAvatar(
     Box(
         modifier = modifier
             .size(size.dp)
-            .offset(y = breatheOffset.dp),
+            .offset(y = breatheOffset.dp, x = (hairSway * 1.5f).dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -137,6 +145,44 @@ fun AyhaAvatar(
                 "thinking" -> Color(0xFF818CF8) // indigo
                 "speaking" -> Color(0xFF34D399) // soft emerald
                 else -> Color(0xFFA78BFA) // purple
+            }
+
+            // Dotted halo when thinking
+            if (state == "thinking") {
+                val haloRadius = r * 0.75f
+                val haloCenter = Offset(center.x, center.y - r * 0.45f)
+                drawCircle(
+                    color = Color(0xFF818CF8).copy(alpha = 0.6f * glowPulse),
+                    radius = haloRadius,
+                    center = haloCenter,
+                    style = Stroke(
+                        width = 2.dp.toPx(),
+                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 15f), hairSway * 40f)
+                    )
+                )
+                drawCircle(
+                    color = Color(0xFFA5B4FC).copy(alpha = 0.25f),
+                    radius = haloRadius + 5.dp.toPx(),
+                    center = haloCenter,
+                    style = Stroke(width = 0.8.dp.toPx())
+                )
+            }
+
+            // Radar expanders when listening
+            if (state == "listening") {
+                val waveRadius = r * 0.95f
+                drawCircle(
+                    color = Color(0xFFC084FC).copy(alpha = 0.4f * glowPulse),
+                    radius = waveRadius,
+                    center = center,
+                    style = Stroke(width = 1.5.dp.toPx())
+                )
+                drawCircle(
+                    color = Color(0xFFC084FC).copy(alpha = 0.2f * (1f - glowPulse)),
+                    radius = waveRadius + 12.dp.toPx() * (1f - glowPulse),
+                    center = center,
+                    style = Stroke(width = 1.dp.toPx())
+                )
             }
 
             drawCircle(
@@ -174,9 +220,9 @@ fun AyhaAvatar(
             val bodyPath = Path().apply {
                 moveTo(center.x - r * 0.5f, center.y + r * 0.4f)
                 // shoulders
-                quadraticTo(center.x - r * 0.7f, center.y + r * 0.65f, center.x - r * 0.55f, center.y + r * 0.9f)
+                quadraticBezierTo(center.x - r * 0.7f, center.y + r * 0.65f, center.x - r * 0.55f, center.y + r * 0.9f)
                 lineTo(center.x + r * 0.55f, center.y + r * 0.9f)
-                quadraticTo(center.x + r * 0.7f, center.y + r * 0.65f, center.x + r * 0.5f, center.y + r * 0.4f)
+                quadraticBezierTo(center.x + r * 0.7f, center.y + r * 0.65f, center.x + r * 0.5f, center.y + r * 0.4f)
                 close()
             }
             // Outfit base: Deep professional black
@@ -249,7 +295,7 @@ fun AyhaAvatar(
                 // Cute soft smile
                 val mouth = Path().apply {
                     moveTo(center.x - r * 0.07f, smileY)
-                    quadraticTo(center.x, smileY + r * 0.06f, center.x + r * 0.07f, smileY)
+                    quadraticBezierTo(center.x, smileY + r * 0.06f, center.x + r * 0.07f, smileY)
                 }
                 drawPath(path = mouth, color = Color(0xFFE11D48), style = Stroke(width = 2.dp.toPx()))
             }
@@ -296,11 +342,11 @@ fun AyhaAvatar(
                 // Cute upper eyelashes / eyeliner
                 val lashL = Path().apply {
                     moveTo(leftEyeCenter.x - eyeRadius * 1.4f, leftEyeCenter.y - eyeRadius * 0.6f)
-                    quadraticTo(leftEyeCenter.x, leftEyeCenter.y - eyeRadius * 1.1f, leftEyeCenter.x + eyeRadius * 1.3f, leftEyeCenter.y - eyeRadius * 0.4f)
+                    quadraticBezierTo(leftEyeCenter.x, leftEyeCenter.y - eyeRadius * 1.1f, leftEyeCenter.x + eyeRadius * 1.3f, leftEyeCenter.y - eyeRadius * 0.4f)
                 }
                 val lashR = Path().apply {
                     moveTo(rightEyeCenter.x - eyeRadius * 1.3f, rightEyeCenter.y - eyeRadius * 0.4f)
-                    quadraticTo(rightEyeCenter.x, rightEyeCenter.y - eyeRadius * 1.1f, rightEyeCenter.x + eyeRadius * 1.4f, rightEyeCenter.y - eyeRadius * 0.6f)
+                    quadraticBezierTo(rightEyeCenter.x, rightEyeCenter.y - eyeRadius * 1.1f, rightEyeCenter.x + eyeRadius * 1.4f, rightEyeCenter.y - eyeRadius * 0.6f)
                 }
                 drawPath(path = lashL, color = Color(0xFF1E293B), style = Stroke(width = 2.5.dp.toPx()))
                 drawPath(path = lashR, color = Color(0xFF1E293B), style = Stroke(width = 2.5.dp.toPx()))
@@ -308,11 +354,11 @@ fun AyhaAvatar(
                 // Closed/Blinking eye lines
                 val closedEyeL = Path().apply {
                     moveTo(leftEyeCenter.x - eyeRadius * 1.3f, leftEyeCenter.y)
-                    quadraticTo(leftEyeCenter.x, leftEyeCenter.y + eyeRadius * 0.2f, leftEyeCenter.x + eyeRadius * 1.3f, leftEyeCenter.y)
+                    quadraticBezierTo(leftEyeCenter.x, leftEyeCenter.y + eyeRadius * 0.2f, leftEyeCenter.x + eyeRadius * 1.3f, leftEyeCenter.y)
                 }
                 val closedEyeR = Path().apply {
                     moveTo(rightEyeCenter.x - eyeRadius * 1.3f, rightEyeCenter.y)
-                    quadraticTo(rightEyeCenter.x, rightEyeCenter.y + eyeRadius * 0.2f, rightEyeCenter.x + eyeRadius * 1.3f, rightEyeCenter.y)
+                    quadraticBezierTo(rightEyeCenter.x, rightEyeCenter.y + eyeRadius * 0.2f, rightEyeCenter.x + eyeRadius * 1.3f, rightEyeCenter.y)
                 }
                 drawPath(path = closedEyeL, color = Color(0xFF1E293B), style = Stroke(width = 3.dp.toPx()))
                 drawPath(path = closedEyeR, color = Color(0xFF1E293B), style = Stroke(width = 3.dp.toPx()))
@@ -323,14 +369,14 @@ fun AyhaAvatar(
             val hairBack = Path().apply {
                 moveTo(center.x - r * 0.45f, center.y - r * 0.1f)
                 // Left hair locks hanging down
-                quadraticTo(center.x - r * 0.52f + (hairSway * 2f), center.y + r * 0.35f, center.x - r * 0.45f + (hairSway * 3f), center.y + r * 0.65f)
+                quadraticBezierTo(center.x - r * 0.52f + (hairSway * 2f), center.y + r * 0.35f, center.x - r * 0.45f + (hairSway * 3f), center.y + r * 0.65f)
                 lineTo(center.x - r * 0.32f + (hairSway * 2f), center.y + r * 0.5f)
-                quadraticTo(center.x - r * 0.38f, center.y + r * 0.25f, center.x - r * 0.35f, center.y - r * 0.1f)
+                quadraticBezierTo(center.x - r * 0.38f, center.y + r * 0.25f, center.x - r * 0.35f, center.y - r * 0.1f)
                 // Right hair locks hanging down
                 moveTo(center.x + r * 0.45f, center.y - r * 0.1f)
-                quadraticTo(center.x + r * 0.52f + (hairSway * 2f), center.y + r * 0.35f, center.x + r * 0.45f + (hairSway * 3f), center.y + r * 0.65f)
+                quadraticBezierTo(center.x + r * 0.52f + (hairSway * 2f), center.y + r * 0.35f, center.x + r * 0.45f + (hairSway * 3f), center.y + r * 0.65f)
                 lineTo(center.x + r * 0.32f + (hairSway * 2f), center.y + r * 0.5f)
-                quadraticTo(center.x + r * 0.38f, center.y + r * 0.25f, center.x + r * 0.35f, center.y - r * 0.1f)
+                quadraticBezierTo(center.x + r * 0.38f, center.y + r * 0.25f, center.x + r * 0.35f, center.y - r * 0.1f)
             }
             drawPath(path = hairBack, color = Color(0xFFE2E8F0)) // Silver/white back hair
             drawPath(path = hairBack, color = Color(0xFFC084FC), style = Stroke(width = 1.dp.toPx())) // Light purple highlight edges
@@ -339,14 +385,14 @@ fun AyhaAvatar(
             val hairBangs = Path().apply {
                 // Head top cap
                 moveTo(center.x - r * 0.45f, center.y - r * 0.1f)
-                quadraticTo(center.x, center.y - r * 0.55f, center.x + r * 0.45f, center.y - r * 0.1f)
+                quadraticBezierTo(center.x, center.y - r * 0.55f, center.x + r * 0.45f, center.y - r * 0.1f)
                 // Right side bangs
-                quadraticTo(center.x + r * 0.38f, center.y - r * 0.25f, center.x + r * 0.25f + (hairSway * 1.5f), center.y - r * 0.05f)
+                quadraticBezierTo(center.x + r * 0.38f, center.y - r * 0.25f, center.x + r * 0.25f + (hairSway * 1.5f), center.y - r * 0.05f)
                 // Center bangs (cute uneven look)
-                quadraticTo(center.x + r * 0.1f, center.y - r * 0.18f, center.x + (hairSway * 2f), center.y)
-                quadraticTo(center.x - r * 0.1f, center.y - r * 0.18f, center.x - r * 0.22f + (hairSway * 1.5f), center.y - r * 0.02f)
+                quadraticBezierTo(center.x + r * 0.1f, center.y - r * 0.18f, center.x + (hairSway * 2f), center.y)
+                quadraticBezierTo(center.x - r * 0.1f, center.y - r * 0.18f, center.x - r * 0.22f + (hairSway * 1.5f), center.y - r * 0.02f)
                 // Left side bangs
-                quadraticTo(center.x - r * 0.38f, center.y - r * 0.25f, center.x - r * 0.45f, center.y - r * 0.1f)
+                quadraticBezierTo(center.x - r * 0.38f, center.y - r * 0.25f, center.x - r * 0.45f, center.y - r * 0.1f)
                 close()
             }
             drawPath(path = hairBangs, color = Color(0xFFF1F5F9)) // Clean Silver/White main hair
@@ -354,11 +400,11 @@ fun AyhaAvatar(
             // Draw bangs details / shading strands
             val strand1 = Path().apply {
                 moveTo(center.x, center.y - r * 0.45f)
-                quadraticTo(center.x + r * 0.05f + (hairSway * 1f), center.y - r * 0.2f, center.x + r * 0.08f + (hairSway * 1f), center.y - r * 0.05f)
+                quadraticBezierTo(center.x + r * 0.05f + (hairSway * 1f), center.y - r * 0.2f, center.x + r * 0.08f + (hairSway * 1f), center.y - r * 0.05f)
             }
             val strand2 = Path().apply {
                 moveTo(center.x - r * 0.15f, center.y - r * 0.42f)
-                quadraticTo(center.x - r * 0.2f + (hairSway * 1f), center.y - r * 0.2f, center.x - r * 0.15f + (hairSway * 1f), center.y - r * 0.02f)
+                quadraticBezierTo(center.x - r * 0.2f + (hairSway * 1f), center.y - r * 0.2f, center.x - r * 0.15f + (hairSway * 1f), center.y - r * 0.02f)
             }
             drawPath(path = strand1, color = Color(0xFFC084FC), style = Stroke(width = 1.5.dp.toPx())) // Beautiful Purple highlights!
             drawPath(path = strand2, color = Color(0xFFC084FC), style = Stroke(width = 1.5.dp.toPx()))
@@ -512,6 +558,14 @@ fun WelcomeScreen(onNavigateNext: () -> Unit) {
 // ==========================================
 @Composable
 fun PermissionScreen(onNavigateNext: () -> Unit) {
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val recordAudioGranted = permissions[android.Manifest.permission.RECORD_AUDIO] ?: false
+        Log.d("PermissionScreen", "RECORD_AUDIO granted: $recordAudioGranted")
+        onNavigateNext()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -545,7 +599,13 @@ fun PermissionScreen(onNavigateNext: () -> Unit) {
 
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(bottom = 24.dp)) {
                 Button(
-                    onClick = onNavigateNext,
+                    onClick = {
+                        val permissions = mutableListOf(android.Manifest.permission.RECORD_AUDIO)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        launcher.launch(permissions.toTypedArray())
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
@@ -607,10 +667,20 @@ fun HomeScreen(
 
             // Greet
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Good Evening,", style = TextStyle(fontSize = 16.sp, color = Color(0xFFA78BFA)))
-                Text("Mr.Rahul", style = TextStyle(fontSize = 28.sp, color = Color.White, fontWeight = FontWeight.ExtraBold))
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(suggestionText, textAlign = TextAlign.Center, style = TextStyle(fontSize = 14.sp, color = Color(0xFF94A3B8), lineHeight = 20.sp), modifier = Modifier.padding(horizontal = 16.dp))
+                AyhaAvatar(size = 95, state = voiceState)
+                Spacer(modifier = Modifier.height(10.dp))
+                val hr = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                val greeting = when {
+                    hr in 5..11 -> "Good Morning, Mr.Rahul ☀️"
+                    hr in 12..16 -> "Good Afternoon, Mr.Rahul 🌤️"
+                    hr in 17..21 -> "Good Evening, Mr.Rahul 🌙"
+                    else -> "Good Night, Mr.Rahul 🌌"
+                }
+                Text(greeting, style = TextStyle(fontSize = 24.sp, color = Color.White, fontWeight = FontWeight.ExtraBold))
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Welcome back. I'm always here.", style = TextStyle(fontSize = 13.sp, color = Color(0xFFA78BFA), fontWeight = FontWeight.Medium))
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(suggestionText, textAlign = TextAlign.Center, style = TextStyle(fontSize = 13.sp, color = Color(0xFF94A3B8), lineHeight = 18.sp), modifier = Modifier.padding(horizontal = 16.dp))
             }
 
             // Orb Visualizer
@@ -814,6 +884,155 @@ fun DashboardScreen(onBack: () -> Unit, onNavigate: (String) -> Unit) {
 }
 
 @Composable
+fun SyntaxHighlightedCode(
+    code: String,
+    language: String
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val keywords = remember { setOf("fun", "val", "var", "class", "interface", "object", "import", "package", "return", "if", "else", "when", "for", "while", "null", "true", "false", "def", "import", "from", "as", "const", "let", "function", "public", "private", "protected", "override") }
+    val types = remember { setOf("String", "Int", "Boolean", "Float", "Double", "List", "Map", "Unit", "Any", "void", "number", "string", "boolean") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF090D16))
+            .border(1.dp, Color(0x337C4DFF), RoundedCornerShape(8.dp))
+    ) {
+        // Top Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0x1F7C4DFF))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = language.ifBlank { "code" }.uppercase(),
+                style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 11.sp, color = Color(0xFFA78BFA), fontWeight = FontWeight.Bold)
+            )
+            Text(
+                text = "Copy",
+                style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 11.sp, color = Color(0xFF22D3EE), fontWeight = FontWeight.Bold),
+                modifier = Modifier
+                    .clickable {
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("AYHA Code", code)
+                        clipboard.setPrimaryClip(clip)
+                        android.widget.Toast.makeText(context, "Code copied! 📋", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            )
+        }
+
+        // Code Area
+        Box(modifier = Modifier.padding(12.dp)) {
+            val annotatedText = remember(code) {
+                androidx.compose.ui.text.buildAnnotatedString {
+                    val lines = code.split("\n")
+                    lines.forEachIndexed { lineIdx, line ->
+                        var currentIdx = 0
+                        val words = line.split(Regex("(?<=\\b)|(?=\\b)|(?<=\\W)|(?=\\W)"))
+                        words.forEach { word ->
+                            when {
+                                word in keywords -> {
+                                    withStyle(SpanStyle(color = Color(0xFFC084FC), fontWeight = FontWeight.Bold)) {
+                                        append(word)
+                                    }
+                                }
+                                word in types -> {
+                                    withStyle(SpanStyle(color = Color(0xFF22D3EE))) {
+                                        append(word)
+                                    }
+                                }
+                                word.startsWith("\"") || word.endsWith("\"") || word.startsWith("'") || word.endsWith("'") -> {
+                                    withStyle(SpanStyle(color = Color(0xFF34D399))) {
+                                        append(word)
+                                    }
+                                }
+                                word.startsWith("//") -> {
+                                    withStyle(SpanStyle(color = Color(0xFF64748B), fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)) {
+                                        append(word)
+                                    }
+                                }
+                                else -> {
+                                    withStyle(SpanStyle(color = Color(0xFFE2E8F0))) {
+                                        append(word)
+                                    }
+                                }
+                            }
+                        }
+                        if (lineIdx < lines.lastIndex) {
+                            append("\n")
+                        }
+                    }
+                }
+            }
+            Text(
+                text = annotatedText,
+                style = TextStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 12.sp, lineHeight = 16.sp),
+                modifier = Modifier.horizontalScroll(rememberScrollState())
+            )
+        }
+    }
+}
+
+@Composable
+fun MarkdownText(text: String, modifier: Modifier = Modifier) {
+    val parts = remember(text) { text.split("```") }
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        parts.forEachIndexed { index, part ->
+            if (index % 2 == 1) {
+                // Code block!
+                val lines = part.trim().split("\n")
+                val lang = lines.firstOrNull()?.trim() ?: ""
+                val actualCode = if (lines.size > 1) part.substringAfter(lines.first()).trim() else part.trim()
+                SyntaxHighlightedCode(code = actualCode, language = lang)
+            } else {
+                // Standard markdown line!
+                if (part.isNotBlank()) {
+                    val annotatedString = remember(part) {
+                        androidx.compose.ui.text.buildAnnotatedString {
+                            var currentPart = part
+                            val regex = Regex("(\\*\\*.*?\\*\\*|`.*?`)")
+                            val matches = regex.findAll(currentPart)
+                            var lastIdx = 0
+                            for (match in matches) {
+                                append(currentPart.substring(lastIdx, match.range.first))
+                                val matchedVal = match.value
+                                when {
+                                    matchedVal.startsWith("**") && matchedVal.endsWith("**") -> {
+                                        val boldInner = matchedVal.substring(2, matchedVal.length - 2)
+                                        withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color.White)) {
+                                            append(boldInner)
+                                        }
+                                    }
+                                    matchedVal.startsWith("`") && matchedVal.endsWith("`") -> {
+                                        val codeInner = matchedVal.substring(1, matchedVal.length - 1)
+                                        withStyle(SpanStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = Color(0xFF22D3EE), background = Color(0x227C4DFF))) {
+                                            append(codeInner)
+                                        }
+                                    }
+                                }
+                                lastIdx = match.range.last + 1
+                            }
+                            if (lastIdx < currentPart.length) {
+                                append(currentPart.substring(lastIdx))
+                            }
+                        }
+                    }
+                    Text(
+                        text = annotatedString,
+                        style = TextStyle(fontSize = 14.sp, color = Color(0xFFE2E8F0), lineHeight = 20.sp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun TypewriterText(
     text: String,
     style: TextStyle,
@@ -842,6 +1061,7 @@ fun TypewriterText(
 // ==========================================
 @Composable
 fun ChatScreen(viewModel: AyhaViewModel, onBack: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val sessions by viewModel.allSessions.collectAsStateWithLifecycle()
     val activeSessionId by viewModel.activeSessionId.collectAsStateWithLifecycle()
     val messages by viewModel.activeMessages.collectAsStateWithLifecycle()
@@ -943,7 +1163,7 @@ fun ChatScreen(viewModel: AyhaViewModel, onBack: () -> Unit) {
                                 borderColor = Color(0xFF7C4DFF),
                                 backgroundColor = if (isUser) Color(0x337C4DFF) else Color(0x1F1E293B)
                             ) {
-                                Column {
+                                Column(modifier = Modifier.padding(12.dp)) {
                                     Text(if (isUser) "You" else "AYHA", style = TextStyle(fontSize = 11.sp, color = Color(0xFFA78BFA), fontWeight = FontWeight.Bold))
                                     Spacer(modifier = Modifier.height(4.dp))
                                     if (shouldAnimate) {
@@ -955,7 +1175,45 @@ fun ChatScreen(viewModel: AyhaViewModel, onBack: () -> Unit) {
                                             }
                                         )
                                     } else {
-                                        Text(m.content, style = TextStyle(fontSize = 14.sp, color = Color.White))
+                                        MarkdownText(m.content)
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Copy Button
+                                        IconButton(
+                                            onClick = {
+                                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                val clip = android.content.ClipData.newPlainText("AYHA Message", m.content)
+                                                clipboard.setPrimaryClip(clip)
+                                                android.widget.Toast.makeText(context, "Neural pathway duplicated! 📋", android.widget.Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(Icons.Default.ContentCopy, "Copy", tint = Color(0xFF94A3B8), modifier = Modifier.size(12.dp))
+                                        }
+
+                                        if (isUser) {
+                                            // Edit Button (populates input)
+                                            IconButton(
+                                                onClick = { textInput = m.content },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(Icons.Default.Edit, "Edit", tint = Color(0xFF94A3B8), modifier = Modifier.size(12.dp))
+                                            }
+                                        }
+
+                                        // Delete Button
+                                        IconButton(
+                                            onClick = { viewModel.deleteMessage(m.id) },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(Icons.Default.Delete, "Delete", tint = Color(0xFFEF4444).copy(alpha = 0.7f), modifier = Modifier.size(12.dp))
+                                        }
                                     }
                                 }
                             }
@@ -1665,8 +1923,16 @@ fun SettingsScreen(viewModel: AyhaViewModel, onBack: () -> Unit) {
                                     checked = isServiceRunning,
                                     onCheckedChange = { checked ->
                                         if (checked) {
-                                            AyhaVoiceService.startService(context)
-                                            Toast.makeText(context, "AYHA Hands-Free Assistant Activated", Toast.LENGTH_SHORT).show()
+                                            val hasPermission = ContextCompat.checkSelfPermission(
+                                                context,
+                                                android.Manifest.permission.RECORD_AUDIO
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                            if (hasPermission) {
+                                                AyhaVoiceService.startService(context)
+                                                Toast.makeText(context, "AYHA Hands-Free Assistant Activated", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(context, "Microphone permission is required. Please grant it first.", Toast.LENGTH_LONG).show()
+                                            }
                                         } else {
                                             AyhaVoiceService.stopService(context)
                                             Toast.makeText(context, "AYHA Hands-Free Assistant Stopped", Toast.LENGTH_SHORT).show()
@@ -1921,6 +2187,7 @@ fun SettingsScreen(viewModel: AyhaViewModel, onBack: () -> Unit) {
 
         // --- DIALOG FOR CONFIGURING A PROVIDER ---
         showConfigProvider?.let { p ->
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
             var key by remember { mutableStateOf(p.apiKey) }
             var base by remember { mutableStateOf(p.baseUrl) }
             var modelName by remember { mutableStateOf(p.selectedModel) }
@@ -1930,6 +2197,8 @@ fun SettingsScreen(viewModel: AyhaViewModel, onBack: () -> Unit) {
             var maxTokensStr by remember { mutableStateOf(p.maxTokens.toString()) }
             var stream by remember { mutableStateOf(p.isStreaming) }
             var timeoutStr by remember { mutableStateOf(p.timeout.toString()) }
+            var retryCount by remember { mutableStateOf(p.retryCount) }
+            var testStatus by remember { mutableStateOf<String?>(null) }
 
             AlertDialog(
                 onDismissRequest = { showConfigProvider = null },
@@ -2015,6 +2284,22 @@ fun SettingsScreen(viewModel: AyhaViewModel, onBack: () -> Unit) {
                                 )
                             }
 
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Retry Count: $retryCount", color = Color.White, fontSize = 12.sp)
+                                    Text("Auto Reconnect", color = Color(0xFFA78BFA), fontSize = 11.sp)
+                                }
+                                Slider(
+                                    value = retryCount.toFloat(),
+                                    onValueChange = { retryCount = it.toInt() },
+                                    valueRange = 0.0f..10.0f,
+                                    colors = SliderDefaults.colors(thumbColor = Color(0xFF7C4DFF), activeTrackColor = Color(0xFF7C4DFF))
+                                )
+                            }
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2050,6 +2335,115 @@ fun SettingsScreen(viewModel: AyhaViewModel, onBack: () -> Unit) {
                                     colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF7C4DFF))
                                 )
                             }
+
+                            // Connection Status indicator
+                            testStatus?.let { status ->
+                                val statusColor = when {
+                                    status == "testing" -> Color(0xFFFBBF24)
+                                    status == "success" -> Color(0xFF10B981)
+                                    else -> Color(0xFFEF4444)
+                                }
+                                val statusText = when {
+                                    status == "testing" -> "Testing connection to ${p.name}..."
+                                    status == "success" -> "🟢 Connection Successful!"
+                                    else -> "🔴 Connection Failed:\n${status.removePrefix("failed: ")}"
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(statusColor.copy(alpha = 0.15f))
+                                        .border(1.dp, statusColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                        .padding(10.dp)
+                                ) {
+                                    Text(statusText, color = statusColor, fontSize = 12.sp, style = TextStyle(lineHeight = 16.sp))
+                                }
+                            }
+
+                            // Utility buttons: Test Connection & Reset
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        testStatus = "testing"
+                                        scope.launch {
+                                            try {
+                                                val tempProv = p.copy(
+                                                    apiKey = key,
+                                                    baseUrl = base,
+                                                    selectedModel = modelName,
+                                                    temperature = temp,
+                                                    topP = topP,
+                                                    topK = topK,
+                                                    maxTokens = maxTokensStr.toIntOrNull() ?: 2048,
+                                                    isStreaming = stream,
+                                                    timeout = timeoutStr.toIntOrNull() ?: 30,
+                                                    retryCount = retryCount
+                                                )
+                                                val testResponse = com.example.data.GeminiApiClient.generateText(
+                                                    prompt = "Test connection status. Reply with Hello and nothing else.",
+                                                    systemInstruction = "Reply with Hello",
+                                                    provider = tempProv
+                                                )
+                                                if (testResponse.contains("missing") || testResponse.contains("blank") || testResponse.contains("error") || testResponse.contains("Error") || testResponse.contains("failed") || testResponse.contains("Unauthorized")) {
+                                                    testStatus = "failed: $testResponse"
+                                                } else {
+                                                    testStatus = "success"
+                                                }
+                                            } catch (e: Exception) {
+                                                testStatus = "failed: ${e.message}"
+                                            }
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0x33A78BFA)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Test Config", color = Color.White, fontSize = 12.sp)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        val defaultBase = when (p.id) {
+                                            "gemini" -> "https://generativelanguage.googleapis.com/"
+                                            "openai" -> "https://api.openai.com/v1/"
+                                            "claude" -> "https://api.anthropic.com/v1/"
+                                            "deepseek" -> "https://api.deepseek.com/v1/"
+                                            "grok" -> "https://api.x.ai/v1/"
+                                            "openrouter" -> "https://openrouter.ai/api/v1/"
+                                            "mistral" -> "https://api.mistral.ai/v1/"
+                                            "perplexity" -> "https://api.perplexity.ai/"
+                                            else -> ""
+                                        }
+                                        val defaultModel = when (p.id) {
+                                            "gemini" -> "gemini-3.5-flash"
+                                            "openai" -> "gpt-4o"
+                                            "claude" -> "claude-3-5-sonnet"
+                                            "deepseek" -> "deepseek-chat"
+                                            "grok" -> "grok-2-1212"
+                                            "openrouter" -> "google/gemini-2.5-flash"
+                                            "mistral" -> "mistral-large-latest"
+                                            "perplexity" -> "sonar-reasoning"
+                                            else -> ""
+                                        }
+                                        base = defaultBase
+                                        modelName = defaultModel
+                                        temp = 0.7f
+                                        topP = 0.95f
+                                        topK = 40
+                                        maxTokensStr = if (p.id == "claude") "4096" else "2048"
+                                        stream = true
+                                        timeoutStr = "30"
+                                        retryCount = 3
+                                        testStatus = null
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0x33EF4444)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Reset Defaults", color = Color.White, fontSize = 12.sp)
+                                }
+                            }
                         }
                     }
                 },
@@ -2068,7 +2462,8 @@ fun SettingsScreen(viewModel: AyhaViewModel, onBack: () -> Unit) {
                                     topK = topK,
                                     maxTokens = maxTokens,
                                     isStreaming = stream,
-                                    timeout = timeout
+                                    timeout = timeout,
+                                    retryCount = retryCount
                                 )
                             )
                             showConfigProvider = null

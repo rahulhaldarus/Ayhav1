@@ -400,6 +400,12 @@ class AyhaViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun deleteMessage(messageId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            chatDao.deleteMessageById(messageId)
+        }
+    }
+
     fun clearAllChatHistory() {
         viewModelScope.launch(Dispatchers.IO) {
             chatDao.clearAllHistory()

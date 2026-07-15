@@ -105,6 +105,7 @@ object GeminiApiClient {
                 "grok" -> "https://api.x.ai/v1/"
                 "openrouter" -> "https://openrouter.ai/api/v1/"
                 "mistral" -> "https://api.mistral.ai/v1/"
+                "perplexity" -> "https://api.perplexity.ai/"
                 else -> ""
             }
         }
@@ -118,6 +119,7 @@ object GeminiApiClient {
                 "grok" -> "grok-2-1212"
                 "openrouter" -> "google/gemini-2.5-flash"
                 "mistral" -> "mistral-large-latest"
+                "perplexity" -> "sonar-reasoning"
                 else -> ""
             }
         }
@@ -134,7 +136,7 @@ object GeminiApiClient {
         }
 
         return try {
-            retryOnTransientFailure {
+            retryOnTransientFailure(maxAttempts = prov.retryCount) {
                 val request = buildRequest(prov, apiKey, baseUrl, model, prompt, systemInstruction, history, isStreaming = false)
                 val okClient = getClientForProvider(prov)
                 okClient.newCall(request).execute().use { response ->
@@ -187,6 +189,7 @@ object GeminiApiClient {
                 "grok" -> "https://api.x.ai/v1/"
                 "openrouter" -> "https://openrouter.ai/api/v1/"
                 "mistral" -> "https://api.mistral.ai/v1/"
+                "perplexity" -> "https://api.perplexity.ai/"
                 else -> ""
             }
         }
@@ -200,6 +203,7 @@ object GeminiApiClient {
                 "grok" -> "grok-2-1212"
                 "openrouter" -> "google/gemini-2.5-flash"
                 "mistral" -> "mistral-large-latest"
+                "perplexity" -> "sonar-reasoning"
                 else -> ""
             }
         }
@@ -219,7 +223,7 @@ object GeminiApiClient {
         }
 
         try {
-            retryOnTransientFailure {
+            retryOnTransientFailure(maxAttempts = prov.retryCount) {
                 val request = buildRequest(prov, apiKey, baseUrl, model, prompt, systemInstruction, history, isStreaming = true)
                 val okClient = getClientForProvider(prov)
                 okClient.newCall(request).execute().use { response ->

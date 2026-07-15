@@ -43,7 +43,7 @@ data class ChatMessage(
 
 @Entity(tableName = "ai_providers")
 data class AiProvider(
-    @PrimaryKey val id: String, // gemini, openai, claude, deepseek, grok, openrouter, mistral, custom
+    @PrimaryKey val id: String, // gemini, openai, claude, deepseek, grok, openrouter, mistral, custom, perplexity
     val name: String,
     val isEnabled: Boolean = true,
     val apiKey: String = "",
@@ -54,5 +54,6 @@ data class AiProvider(
     val topK: Int = 40,
     val maxTokens: Int = 2048,
     val isStreaming: Boolean = true,
-    val timeout: Int = 30 // Timeout in seconds
+    val timeout: Int = 30, // Timeout in seconds
+    val retryCount: Int = 3
 )
